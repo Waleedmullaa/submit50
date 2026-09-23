@@ -1,46 +1,97 @@
-# Usage
+def load_data(filename):
+    """
+    Load shopping data from a CSV file and return
+    evidence and labels.
+    """
 
-## English
+    evidence = []
+    labels = []
 
-```
-submit50 problem
-```
+    months = {
+        "Jan": 0,
+        "Feb": 1,
+        "Mar": 2,
+        "Apr": 3,
+        "May": 4,
+        "June": 5,
+        "Jul": 6,
+        "Aug": 7,
+        "Sep": 8,
+        "Oct": 9,
+        "Nov": 10,
+        "Dec": 11
+    }
 
-### Spanish
+    with open(filename, newline="") as file:
+        reader = csv.DictReader(file)
 
-```
-LANGUAGE=es submit50 problem
-```
+        for row in reader:
+            data = [
+                int(row["Administrative"]),
+                float(row["Administrative_Duration"]),
+                int(row["Informational"]),
+                float(row["Informational_Duration"]),
+                int(row["ProductRelated"]),
+                float(row["ProductRelated_Duration"]),
+                float(row["BounceRates"]),
+                float(row["ExitRates"]),
+                float(row["PageValues"]),
+                float(row["SpecialDay"]),
+                months[row["Month"]],
+                int(row["OperatingSystems"]),
+                int(row["Browser"]),
+                int(row["Region"]),
+                int(row["TrafficType"]),
+                1 if row["VisitorType"] == "Returning_Visitor" else 0,
+                1 if row["Weekend"] == "TRUE" else 0
+            ]
 
-# Internationalizing
+            evidence.append(data)
 
-## Adding a new language
+            if row["Revenue"] == "TRUE":
+                labels.append(1)
+            else:
+                labels.append(0)
 
-1. First, ensure that `babel` is installed and that `submit50` is installed in development mode:
+    return evidence, labels
 
-        pip install babel
-        pip install -e .
 
-2. Generate the translation template:
+def train_model(evidence, labels):
+    """
+    Train a k-nearest neighbor model with k = 1.
+    """
 
-        python setup.py extract_messages
+    model = KNeighborsClassifier(n_neighbors=1)
+    model.fit(evidence, labels)
 
-3. Generate the `.po` file for the desired language:
+    return model
 
-        python setup.py init_catalog -l <LANG>
 
-    where `<LANG>` is the code of the language you want to translate (e.g., `es` for Spanish, `en` for English, etc.)
+def evaluate(labels, predictions):
+    """
+    Evaluate predictions and return sensitivity and specificity.
+    """
 
-4. Then, add the translations to the newly created `submit50/locale/<LANG>/LC_MESSAGES/submit50.po`
+    positive = 0
+    negative = 0
+    true_positive = 0
+    true_negative = 0
 
-5. Finally, compile the new translations:
+    for actual, predicted in zip(labels, predictions):
 
-        python setup.py compile_catalog
+        if actual == 1:
+            positive += 1
 
-    and test them:
+            if predicted == 1:
+                true_positive += 1
 
-        LANGUAGE=<LANG> submit50 <PROBLEM>
+        else:
+            negative += 1
 
-## Updating an existing language
+            if predicted == 0:
+                true_negative += 1
 
-Follow the steps described in the above section, but instead of running `python setup.py init_catalog -l <LANG>`, run `python setup.py update_catalog -l <LANG>`.
+    sensitivity = true_positive / positive
+    specificity = true_negative / negative
+
+    return sensitivity, specificity
